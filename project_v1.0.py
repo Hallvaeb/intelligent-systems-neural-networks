@@ -4,20 +4,20 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.keras.models import Sequential, model_from_json
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import MeanSquaredError, CategoricalCrossentropy
-from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix, accuracy_score
+from tensorflow.keras.losses import MeanSquaredError
+from sklearn.metrics import multilabel_confusion_matrix, accuracy_score
 import time
 import os
+import matplotlib.pyplot as plt
 
 FILENAMES = ["inf_ecg.csv", "inf_gsr.csv", "inf_ppg.csv", 'pixart.csv', "NASA_TLX.csv"]
 
 def process_df(df, filename, person_no, df_pro, datasplit = 10):
-	"""
-	
-	"""
 	no_avg_rows = round(len(df)/datasplit)
+	if(filename == "NASA_TLX.csv"):
+		print(f"filename: {filename}:\n {df}")
 
 	# Section the data into less rows and average the sections into 1 row each.
 	for datasplit_no in range(datasplit):
@@ -26,14 +26,20 @@ def process_df(df, filename, person_no, df_pro, datasplit = 10):
 		avg_section = sum_section/no_avg_rows
 
 		# Splitting the columns. We have 6 columns of data from 6 different tests.
-		tot_no_of_tests = 6
-		for test_no in range(0, tot_no_of_tests):
-			# Don't ask me to explain the below equation to finding the offset please. It works.
-			offset = (datasplit_no*tot_no_of_tests+test_no) + (person_no*datasplit*tot_no_of_tests)
-			df_pro.at[offset, 'person_no'] = int(person_no) # WHY NO INT?
-			df_pro.at[offset, filename] = avg_section[test_no]
-			df_pro.at[offset, 'target'] = test_no+1
-			
+		n_columns = 6
+		for test_no in range(0, n_columns):
+			offset = (datasplit_no*n_columns+test_no) + (person_no*datasplit*n_columns)
+			if filename == "NASA_TLX.csv":
+				count = 0
+				for column in ['Mental Demand', 'Physical Demand', 'Temporal Demand', 'Performance', 'Effort', 'Frustration']:                    
+					df_column = df.loc[count]
+					df_pro.at[offset, column] = df_column[test_no+1]
+					count += 1
+			else:
+				df_pro.at[offset, 'person_no'] = int(person_no) # WHY NO INT?
+				df_pro.at[offset, filename] = avg_section[test_no]
+				df_pro.at[offset, 'target'] = test_no+1
+	
 def get_df(filename, path_to_data, person_no):
 	# Run same procedure for every person in the dataset. 
 	# for person_no in range (2, 25):
@@ -62,25 +68,9 @@ def get_df(filename, path_to_data, person_no):
 			return df_tlx
 		except:
 			return pd.DataFrame()
-	
-def process_df_tlx(df_tlx, filename, person_no, df_tlx_pro, datasplit = 10):
-	
-	# Splitting the columns. We have 6 columns of data from 6 different tests.
-	tot_no_of_tests = 6
-	for datasplit_no in range(datasplit):
-		for test_no in range(0, tot_no_of_tests):
-			#Don't ask me to explain the below equation to finding the offset please. It works.
-			offset = (datasplit_no*tot_no_of_tests+test_no) + (person_no*datasplit*tot_no_of_tests)
-			count = 0
-			for column in df_tlx_pro.columns:                    
-				df_column = df_tlx.loc[count]
-				df_tlx_pro.at[offset, column] = df_column[test_no+1]
-				count += 1
 				
-def process_data(df_final, df_target):
+def process_data(df_final):
 	
-	#Join features and targets for train/test/validation data split
-	df_final = df_final.merge(df_target)
 	#df_final = df_final.drop(columns=['inf_ecg.csv','inf_gsr.csv','inf_ppg.csv','pixart.csv'])
 	seed_train_test = 0
 	seed_test_val = 0
@@ -120,7 +110,7 @@ def print_results(epochs, batch_size, acc, conf, time_to_fit):
 	print('---------------------')
 	print('Epochs:', epochs)
 	print('Batch size:', batch_size)
-	print('Training Confusion Matrix:', conf)
+	print('Confusion Matrix:\n', conf)
 	print('Accuracy:', acc)
 	print('Time to fit:', round(time_to_fit), "seconds")
 
@@ -137,13 +127,15 @@ def make_model(arg_epochs, arg_batch_size, learning_rate, activation_func_hidden
 	model.add(Dropout(0.2))
 	model.add(Dense(20, activation=activation_func_hidden, kernel_initializer='he_normal'))
 	model.add(Dropout(0.2))
+	model.add(Dense(20, activation=activation_func_hidden, kernel_initializer='he_normal'))
+	model.add(Dropout(0.2))
 	model.add(Dense(6, activation=activation_func_output))
 	#model.add(Dense(1, activation=None))
 
 	# Define the optimizer
 	model.compile(
 		optimizer=Adam(learning_rate),
-		loss=CategoricalCrossentropy(),
+		loss=MeanSquaredError(),
 		metrics=['accuracy']
 	)
 
@@ -205,48 +197,111 @@ def encode_target(df_final):
 			raise('Check Data Type')
 	return df_final_target
  
-def main():
-
-   	# Create processed data dataframe on the heap to fill it later.
-	df_pro = pd.DataFrame({'person_no':[], 'inf_ecg.csv':[], 'inf_gsr.csv':[], 'inf_ppg.csv':[], 'pixart.csv':[], 'target':[]})
-	df_tlx_pro = pd.DataFrame({'Mental Demand':[], 'Physical Demand':[], 'Temporal Demand':[], 'Performance':[], 'Effort':[], 'Frustration':[]})
+def create_preprocessed_raw_data():
+	   	# Create processed data dataframe on the heap to fill it later.
+	df_pro = pd.DataFrame({'person_no':[], 'inf_ecg.csv':[], 'inf_gsr.csv':[], 'inf_ppg.csv':[], 'pixart.csv':[], 'Mental Demand':[], 'Physical Demand':[], 'Temporal Demand':[], 'Performance':[], 'Effort':[], 'Frustration':[], 'target':[]})
 	
 	cwd = os.path.abspath(os.getcwd())
 	path_TLX =  cwd+"/MAUS/Subjective_rating/"    
 	path_to_data = cwd+"/MAUS/Data/Raw_data/" 
 
+
    	#We want to first select the file to include. The algorithm should gather data from all participants everytime anyways.
 	for filename in FILENAMES:
 		for person_no in range(0, 30): 
 			if filename != "NASA_TLX.csv":
-				df = get_df(filename, path_to_data, person_no)
-				if(len(df.any()) > 0):
-					process_df(df, filename, person_no, df_pro, datasplit = 10)
+				path = path_to_data
 			else:
-				df_tlx = get_df(filename, path_TLX, person_no)                
-				if(len(df_tlx.any()) > 0):
-					process_df_tlx(df_tlx, filename, person_no, df_tlx_pro, datasplit=10)
-					df_tlx = get_df(filename, path_TLX, person_no)        
+				path = path_TLX
+			df = get_df(filename, path, person_no)
+			if(len(df.any()) > 0):
+				process_df(df, filename, person_no, df_pro, datasplit = 10)
+			# else:
+			# 	df_tlx = get_df(filename, path_TLX, person_no)                
+			# 	if(len(df_tlx.any()) > 0):
+			# 		process_df_tlx(df_tlx, filename, person_no, df_tlx_pro, datasplit=10)
+			# 		df_tlx = get_df(filename, path_TLX, person_no)        
 	df_pro = df_pro.reset_index(drop=True)
-	df_tlx_pro = df_tlx_pro.reset_index(drop=True)
-	df_final = df_pro.join(df_tlx_pro)
+	print(f'df_pro \n{df_pro}')
+	# df_tlx_pro = df_tlx_pro.reset_index(drop=True)
+	# df_final = df_pro.join(df_tlx_pro)
 		
-	df_target = encode_target(df_final)
-	df_final = df_final.drop('target', axis = 1)
-	df_final = df_final.join(df_target)
-	df_final = df_final.drop('person_no', axis = 1)
-	X_train, Y_train, X_test, Y_test, X_val, Y_val = process_data(df_final, df_target)
+	df_target = encode_target(df_pro)
+	df_pro = df_pro.drop('target', axis = 1)
+	df_pro = df_pro.join(df_target)
+	df_pro = df_pro.drop('person_no', axis = 1)
+	print(f"df_pro\n {df_pro}")
+	df_pro.to_csv("preprocessed_raw_data.csv")
 
+def get_preprocessed_raw_data():
+	df = pd.read_csv("preprocessed_raw_data.csv")
+	df = df.drop('Unnamed: 0', axis = 1)
+	return df
+    
+def show_figs(history, name):
+    #Data from the last model fitting process
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    #Plotting of Training vs Validation accuracy evolving with epochs
+    epochs = range(1, len(acc) + 1)
+    
+    fig1 = plt.figure()
+    
+    plt.plot(epochs, acc, 'r', label='Training acc')
+    plt.plot(epochs, val_acc, 'k', label='Validation acc')
+    plt.title('Training and validation accuracy '+name)
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.grid()
+    
+    fig2 = plt.figure()
+    
+    plt.plot(epochs, loss, 'r', label='Training loss')
+    plt.plot(epochs, val_loss, 'k', label='Validation loss')
+    plt.title('Training and validation loss')
+    plt.xlabel('Epochs')
+    plt.xlabel('X-axis Label')
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+def main():
+
+	# create_preprocessed_raw_data()
+	df_preprocessed = get_preprocessed_raw_data()
+
+	print("HEIIIEL")
+	X_train, Y_train, X_test, Y_test, X_val, Y_val = process_data(df_preprocessed)
+	print("HEIIIEL")
+
+	# FITTING NEURAL NETWORK
 	#Activation functions for the network
-	activation_func_1 = 'relu'
+	activation_func_hidden = 'tanh'
 	activation_func_output = 'softmax'
 
 	# For saving the average scores of different types of runs.
 	avg_scores = []
 	
-	history, model = run_once(5, 200, 1e-4, activation_func_1, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-	history, model = run_once(5, 200, 1e-4, activation_func_1, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+	history, model = run_once(200, 10, 1e-3, activation_func_hidden, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+	history2, model = run_once(200, 10, 5e-4, activation_func_hidden, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+	history3, model = run_once(200, 10, 1e-4, activation_func_hidden, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+	history4, model = run_once(200, 10, 1e-4, activation_func_hidden, "sigmoid", X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
 	
+	for epochs in range(10, 1000, 10):
+		history, model = run_once(epochs, 10, 1e-4, activation_func_hidden, activation_func_output, X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+
+	show_figs(history, "-3")
+	show_figs(history2, "5e-4")
+	show_figs(history3, "1e-4 sigmoid")
+	show_figs(history4, "1e-4 sigmoid")
+
+
+
 	print(f"Average accuracies for the different runs [epochs, batch size, learning rate, average accuracy, time to fit]:{avg_scores}")
 
 if __name__ == "__main__":
