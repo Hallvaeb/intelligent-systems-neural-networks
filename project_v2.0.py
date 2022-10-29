@@ -274,7 +274,10 @@ def main():
 
 	# create_preprocessed_raw_data()
 	df_preprocessed = get_preprocessed_raw_data()
+
+	print("HEIIIEL")
 	X_train, Y_train, X_test, Y_test, X_val, Y_val = process_data(df_preprocessed)
+	print("HEIIIEL")
 
 	# FITTING NEURAL NETWORK
 	#Activation functions for the network
