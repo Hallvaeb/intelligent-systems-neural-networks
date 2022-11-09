@@ -21,7 +21,6 @@ def get_preprocessed_raw_data(filename):
         print(
             "Error handled. File: \"{filename}\" was not found, run the preprocessing first and check spelling of the name.")
         exit()
-    # And if different error we want it to raise whatever error happens..
 
 
 def process_data(df_final):
@@ -186,40 +185,30 @@ def get_accuracies(conf, acc):
         acc.append(actual_acc)
     
     return acc
-#def main():
 
-preprocessed_data_filename = "preprocessed_raw_data.csv"
-df_preprocessed = get_preprocessed_raw_data(preprocessed_data_filename)
+def main():
 
-X_train, Y_train, X_test, Y_test, X_val, Y_val = process_data(df_preprocessed)
+    preprocessed_data_filename = "preprocessed_raw_data.csv"
+    df_preprocessed = get_preprocessed_raw_data(preprocessed_data_filename)
 
-# FITTING NEURAL NETWORK
-# Activation functions for the network
-activation_func_hidden = 'tanh'
-activation_func_output = 'softmax'
+    X_train, Y_train, X_test, Y_test, X_val, Y_val = process_data(df_preprocessed)
 
-# For saving the average scores of different types of runs.
-avg_scores = []
-acc = []
-history, model, conf = run_once(100, 50, 1e-3, activation_func_hidden, activation_func_output,
-                          X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-acc = get_accuracies(conf, acc)
-print('Accuracies for each class:', acc)
-#history2, model = run_once(200, 10, 5e-4, activation_func_hidden, activation_func_output,
-#                           X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-#history3, model = run_once(200, 10, 1e-4, activation_func_hidden, activation_func_output,
-#                           X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-#history4, model = run_once(200, 10, 1e-4, activation_func_hidden,
-#                           "sigmoid", X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-#for epochs in range(10, 1000, 10):
-#    history, model = run_once(epochs, 10, 1e-4, activation_func_hidden, activation_func_output,
-#                              X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
-show_figs(history, "-3")
-#show_figs(history2, "5e-4")
-#show_figs(history3, "1e-4 sigmoid")
-#show_figs(history4, "1e-4 sigmoid")
-print(f"Average accuracies for the different runs [epochs, batch size, learning rate, average accuracy, time to fit]:{avg_scores}")
+    # FITTING NEURAL NETWORK
+    # Activation functions for the network
+    activation_func_hidden = 'tanh'
+    activation_func_output = 'softmax'
 
-#if __name__ == "__main__":
+    # For saving the average scores of different types of runs.
+    avg_scores = []
+    acc = []
+    history, model, conf = run_once(100, 50, 1e-3, activation_func_hidden, activation_func_output,
+                            X_train, Y_train, X_test, Y_test, X_val, Y_val, avg_scores)
+    acc = get_accuracies(conf, acc)
+    print('Accuracies for each class:', acc)
+    show_figs(history, "-3")
 
-#    main()
+    print(f"Average accuracies for the different runs [epochs, batch size, learning rate, average accuracy, time to fit]:{avg_scores}")
+
+if __name__ == "__main__":
+
+   main()
