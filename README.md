@@ -1,4 +1,4 @@
-# Intelligent Systems Project: Neural Networks
+# Intelligent Systems Project: Neural Networks for sleep deprivation data analysis
 
 The task given was to create our own task based on one of several provided datasets, and solve it in the best way using neural networks.
 
