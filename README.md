@@ -1,6 +1,4 @@
-# SInt-project-NN
+# Intelligent Systems Project: Neural Networks
 
-
-Report:
-
-[embed]https://github.com/Hallvaeb/SInt-project-NN/blob/master/Project%20Report.pdf[/embed]
+## See the project report for detailed description
+https://github.com/Hallvaeb/SInt-project-NN/blob/master/Project%20Report.pdf
